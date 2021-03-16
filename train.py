@@ -6,6 +6,8 @@ import argparse
 import datetime
 import os
 import traceback
+import gpustat
+pwd = os.path.dirname(os.path.realpath(__file__))
 
 import numpy as np
 import torch
@@ -52,10 +54,10 @@ def get_args():
     parser.add_argument('--es_patience', type=int, default=0,
                         help='Early stopping\'s parameter: number of epochs with no improvement after which training will be stopped. Set to 0 to disable this technique.')
     parser.add_argument('--data_path', type=str, default='datasets/', help='the root folder of dataset')
-    parser.add_argument('--log_path', type=str, default='logs/')
+    parser.add_argument('--log_path', type=str, default=os.path.join(pwd, 'logs'))
     parser.add_argument('-w', '--load_weights', type=str, default=None,
                         help='whether to load weights from a checkpoint, set None to initialize, set \'last\' to load last checkpoint')
-    parser.add_argument('--saved_path', type=str, default='logs/')
+    parser.add_argument('--saved_path', type=str, default=os.path.join(pwd, 'logs'))
     parser.add_argument('--debug', type=boolean_string, default=False,
                         help='whether visualize the predicted boxes of training, '
                              'the output images will be in test/')
@@ -82,7 +84,7 @@ class ModelWithLoss(nn.Module):
 
 
 def train(opt):
-    params = Params(f'projects/{opt.project}.yml')
+    params = Params(os.path.join(pwd, f'projects/{opt.project}.yml'))
 
     if params.num_gpus == 0:
         os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
@@ -110,13 +112,13 @@ def train(opt):
                   'num_workers': opt.num_workers}
 
     input_sizes = [512, 640, 768, 896, 1024, 1280, 1280, 1536, 1536]
-    training_set = CocoDataset(root_dir=os.path.join(opt.data_path, params.project_name), set=params.train_set,
+    training_set = CocoDataset(root_dir=opt.data_path, set=params.train_set,
                                transform=transforms.Compose([Normalizer(mean=params.mean, std=params.std),
                                                              Augmenter(),
                                                              Resizer(input_sizes[opt.compound_coef])]))
     training_generator = DataLoader(training_set, **training_params)
 
-    val_set = CocoDataset(root_dir=os.path.join(opt.data_path, params.project_name), set=params.val_set,
+    val_set = CocoDataset(root_dir=opt.data_path, set=params.val_set,
                           transform=transforms.Compose([Normalizer(mean=params.mean, std=params.std),
                                                         Resizer(input_sizes[opt.compound_coef])]))
     val_generator = DataLoader(val_set, **val_params)
@@ -254,6 +256,8 @@ def train(opt):
                     if step % opt.save_interval == 0 and step > 0:
                         save_checkpoint(model, f'efficientdet-d{opt.compound_coef}_{epoch}_{step}.pth')
                         print('checkpoint...')
+                    if step % 30 == 0:
+                        gpustat.print_gpustat()
 
                 except Exception as e:
                     print('[Error]', traceback.format_exc())

@@ -422,7 +422,7 @@ class EfficientNet(nn.Module):
     modified by Zylo117
     """
 
-    def __init__(self, compound_coef, load_weights=False):
+    def __init__(self, compound_coef, load_weights=False, onnx_export=False):
         super(EfficientNet, self).__init__()
         model = EffNet.from_pretrained(f'efficientnet-b{compound_coef}', load_weights)
         del model._conv_head
@@ -431,11 +431,12 @@ class EfficientNet(nn.Module):
         del model._dropout
         del model._fc
         self.model = model
+        self.model.set_swish(memory_efficient=not onnx_export)
 
-    def forward(self, x):
-        x = self.model._conv_stem(x)
-        x = self.model._bn0(x)
-        x = self.model._swish(x)
+    def forward(self, x):  # 1, 3, 512, 512
+        x = self.model._conv_stem(x)   # 1, 32, 256, 256
+        x = self.model._bn0(x)  # 1, 32, 256, 256
+        x = self.model._swish(x)  # 1, 32, 256, 256
         feature_maps = []
 
         # TODO: temporarily storing extra tensor last_x and del it later might not be a good idea,
@@ -448,12 +449,20 @@ class EfficientNet(nn.Module):
                 drop_connect_rate *= float(idx) / len(self.model._blocks)
             x = block(x, drop_connect_rate=drop_connect_rate)
 
-            if block._depthwise_conv.stride == [2, 2]:
+            if block._depthwise_conv.stride == (2, 2):
                 feature_maps.append(last_x)
             elif idx == len(self.model._blocks) - 1:
                 feature_maps.append(x)
             last_x = x
         del last_x
+        
+        '''
+        0: 1, 16, 256, 256
+        1: 1, 24, 128, 128
+        2: 1, 40, 64, 64
+        3: 1, 112, 32, 32
+        4: 1, 320, 16, 16
+        '''
         return feature_maps[1:]
 
 

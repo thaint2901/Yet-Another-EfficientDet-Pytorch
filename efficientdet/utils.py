@@ -67,7 +67,7 @@ class Anchors(nn.Module):
             self.pyramid_levels = pyramid_levels
 
         self.strides = kwargs.get('strides', [2 ** x for x in self.pyramid_levels])
-        self.scales = np.array(kwargs.get('scales', [2 ** 0, 2 ** (1.0 / 3.0), 2 ** (2.0 / 3.0)]))
+        self.scales = np.array(kwargs.get('scales', [2 ** 0, 2 ** (1.0 / 3.0), 2 ** (2.0 / 3.0)]))  # [1.        , 1.25992105, 1.58740105])
         self.ratios = kwargs.get('ratios', [(1.0, 1.0), (1.4, 0.7), (0.7, 1.4)])
 
         self.last_anchors = {}

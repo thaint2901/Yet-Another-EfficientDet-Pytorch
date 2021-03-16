@@ -1,7 +1,7 @@
 # Author: Zylo117
 
 import math
-
+import torch
 from torch import nn
 import torch.nn.functional as F
 
@@ -32,6 +32,9 @@ class Conv2dStaticSamePadding(nn.Module):
 
     def forward(self, x):
         h, w = x.shape[-2:]
+        h = int(h)
+        w = int(w)
+        # print(type(h), type(self.stride[1]), type(self.kernel_size[1]))
         
         extra_h = (math.ceil(w / self.stride[1]) - 1) * self.stride[1] - w + self.kernel_size[1]
         extra_v = (math.ceil(h / self.stride[0]) - 1) * self.stride[0] - h + self.kernel_size[0]
@@ -71,6 +74,8 @@ class MaxPool2dStaticSamePadding(nn.Module):
 
     def forward(self, x):
         h, w = x.shape[-2:]
+        h = int(h)
+        w = int(w)
         
         extra_h = (math.ceil(w / self.stride[1]) - 1) * self.stride[1] - w + self.kernel_size[1]
         extra_v = (math.ceil(h / self.stride[0]) - 1) * self.stride[0] - h + self.kernel_size[0]
